@@ -21,24 +21,37 @@ run at zero marginal cost.
 
 ```
 1. DATASET  (src/build_dataset.py)
-   Labeled-by-construction pairs from real document corpora:
-   - grounded answers  = faithful, extractive/paraphrased summaries of the context
-   - ungrounded answers = controlled corruptions: facts injected from OTHER documents,
-     negated claims, fabricated specifics (numbers, names), unsupported causal leaps
-   → every label is correct by construction, no human annotation needed
+   Labels correct BY CONSTRUCTION — no human annotation, no LLM labelling.
+   Generate the context first, then preserve or deliberately corrupt the answer.
+   Four balanced case types:
+     - supported  : answer states a fact present in the context      -> grounded=True
+     - contradict : answer swaps in a value that conflicts            -> grounded=False
+     - fabricated : answer adds a specific fact absent from context   -> grounded=False
+     - refusal    : asked something absent, answer correctly declines -> grounded=True
 
 2. TRAIN    (src/train.py)
    QLoRA (4-bit NF4) on an 8 GB consumer GPU (RTX 5070 laptop):
    base = small instruct model (Qwen2.5-1.5B-Instruct class)
    task = (question, context, answer) → {"grounded": bool, "feedback": "..."}
+   completions-only loss — the model learns to PRODUCE the verdict, not echo the prompt.
 
 3. JUDGE THE JUDGE  (src/evaluate.py)
-   Held-out agreement vs constructed labels: accuracy / F1 / refusal-case correctness,
-   base model zero-shot vs fine-tuned — the before/after table IS the release gate.
+   Held-out agreement vs constructed labels: accuracy / precision / recall / F1 /
+   refusal-case correctness — base zero-shot vs fine-tuned. The before/after table
+   IS the release gate: evaluate.py exits non-zero if the fine-tune doesn't win.
 
-4. SERVE    (src/judge.py + promptfoo provider)
+4. SERVE    (src/judge.py + src/promptfoo_provider.py)
    Drop-in grader: a promptfoo Python provider so any eval suite (including
-   agentic-rag-mcp's CI gate) can swap the API judge for this local one.
+   agentic-rag-mcp's CI gate) can swap the frontier-API judge for this local one.
+```
+
+## Quickstart
+
+```bash
+python -m venv .venv && .venv/Scripts/pip install -r requirements.txt   # torch: cu128 wheels
+python src/build_dataset.py --n 1400 --seed 7 --out data               # deterministic corpus
+python src/train.py --base Qwen/Qwen2.5-1.5B-Instruct --epochs 2       # QLoRA, ~8 GB VRAM
+python src/evaluate.py --adapter out/adapter                          # base vs tuned + gate
 ```
 
 ## Skills this exercises, deliberately

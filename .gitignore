@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Training artifacts (adapters, checkpoints, HF cache)
+out/
+checkpoints/
+*.safetensors
+.cache/
+wandb/
+
+# Data is regenerated deterministically from build_dataset.py; keep it out of git
+data/*.jsonl
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
