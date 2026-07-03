@@ -1,0 +1,19 @@
+{
+  "base": {
+    "accuracy": 0.5285714285714286,
+    "precision": 1.0,
+    "recall": 0.043478260869565216,
+    "f1": 0.08333333333333333,
+    "refusal_correct": 0.0,
+    "n": 140
+  },
+  "tuned": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "refusal_correct": 1.0,
+    "n": 140
+  },
+  "f1_delta": 0.9166666666666666
+}

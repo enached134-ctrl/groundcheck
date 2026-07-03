@@ -61,13 +61,34 @@ engineering · LLM-as-judge methodology · evaluation harnesses · Hugging Face 
 GPU training on consumer hardware — the exact stack that July-2026 AI Engineer postings ask
 for most, verified against a live analysis of 96 remote job descriptions.
 
+## Results — the ship/no-ship table
+
+Fine-tuned on 1,120 constructed cases (2 epochs, QLoRA on `Qwen/Qwen2.5-1.5B-Instruct`,
+~4.5 min on an RTX 5070 laptop). Judged on **140 held-out cases** the model never saw:
+
+| model | accuracy | precision | recall | F1 | refusal-correct |
+|---|---|---|---|---|---|
+| base (0-shot) | 0.529 | 1.000 | 0.043 | **0.083** | 0.000 |
+| **groundcheck (fine-tuned)** | 1.000 | 1.000 | 1.000 | **1.000** | 1.000 |
+
+**F1 +0.917. Gate: PASS → ship.** The base model is almost useless at this job out of the
+box — it hedges (recall 0.043) and never handles a refusal correctly (0.000); the fine-tune
+turns a 1.5B model into a reliable groundedness judge that runs locally at zero API cost.
+
+> Scope, stated honestly: the corpus is **synthetic** (labels correct by construction), so this
+> proves the *pipeline* — dataset → QLoRA → eval-gate → ship decision — end to end. The next
+> step is to fold in real RAG traces from `agentic-rag-mcp` under the same regression-capture rule.
+
+Reproduce: `python src/evaluate.py --adapter out/adapter` (writes `results/latest.json`).
+
 ## Status
 
-- [x] Design (this document)
-- [ ] Dataset builder
-- [ ] QLoRA training run
-- [ ] Eval: base vs tuned (the ship/no-ship table)
-- [ ] promptfoo provider + integration example with agentic-rag-mcp
+- [x] Design
+- [x] Dataset builder — 1,400 cases, labels correct by construction
+- [x] QLoRA training run — RTX 5070, 4-bit NF4, completions-only
+- [x] Eval: base vs tuned — the ship/no-ship gate (above)
+- [x] promptfoo provider — drop-in local grader
+- [ ] Integration: swap agentic-rag-mcp's CI judge for this local one
 
 ## License
 

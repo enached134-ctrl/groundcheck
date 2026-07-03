@@ -78,7 +78,9 @@ def main() -> None:
     print(f"\nF1 delta: {delta:+.3f}")
 
     results = {"base": base_m, "tuned": tuned_m, "f1_delta": delta}
-    with open("out/eval-results.json", "w", encoding="utf-8") as f:
+    import os
+    os.makedirs("results", exist_ok=True)
+    with open("results/latest.json", "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
     if delta <= 0:
