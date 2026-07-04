@@ -1,0 +1,8 @@
+{
+  "cases": 60,
+  "local_accuracy": 1.0,
+  "teacher_accuracy": 1.0,
+  "agreement": 1.0,
+  "teacher_cost_per_1k_calls_usd": 0.0256,
+  "local_cost_per_1k_calls_usd": 0.0
+}

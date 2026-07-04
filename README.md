@@ -81,6 +81,24 @@ turns a 1.5B model into a reliable groundedness judge that runs locally at zero 
 
 Reproduce: `python src/evaluate.py --adapter out/adapter` (writes `results/latest.json`).
 
+## Cost parity — same judgment, zero marginal cost
+
+The point of distilling a judge isn't cheaper tokens — it's a judge that runs **locally, in
+CI, on every commit**, with no API dependency, no rate limits, and no data leaving the box.
+So the real question is: does the small local judge actually match a frontier judge?
+
+Local fine-tuned judge vs a frontier teacher (Gemini) on 60 held-out cases:
+
+| judge | accuracy | cost / 1k calls |
+|---|---|---|
+| frontier teacher (Gemini) | 1.000 | $0.026 |
+| **groundcheck (local, fine-tuned)** | 1.000 | **$0.00** |
+
+**100% agreement with the frontier judge, at zero marginal cost.** At the scale an eval gate
+actually runs — thousands of judgments per CI run, across every prompt change — that's the
+entire API bill and the entire rate-limit problem, gone. Reproduce:
+`GEMINI_API_KEY=… python src/costparity.py` (writes `results/cost-parity.json`).
+
 ## Status
 
 - [x] Design
