@@ -3,6 +3,8 @@
 **A small open judge model for RAG groundedness — fine-tuned with QLoRA, and shipped only
 because its eval suite said yes.**
 
+**[📊 Live benchmark report →](https://enached134-ctrl.github.io/groundcheck)**
+
 Every serious RAG system needs a groundedness judge: something that reads *(question,
 retrieved context, answer)* and decides whether every claim in the answer is actually
 supported by the context. Today that judge is usually a frontier-model API call — which makes

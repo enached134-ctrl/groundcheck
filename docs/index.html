@@ -1,0 +1,255 @@
+<title>groundcheck — RAG Groundedness Judge Benchmark</title>
+<meta name="description" content="A 1.5B open model fine-tuned into a RAG groundedness judge — base F1 0.083 → 1.000, 100% agreement with a frontier judge at $0 per call.">
+<meta property="og:title" content="groundcheck — a local RAG groundedness judge that matches a frontier model at $0/call">
+<meta property="og:description" content="Fine-tuned a 1.5B model into a groundedness judge. F1 0.083 → 1.000; 100% agreement with a frontier judge; zero marginal cost. Shipped only because its own evals said yes.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://enached134-ctrl.github.io/groundcheck/">
+<meta property="og:image" content="https://enached134-ctrl.github.io/groundcheck/assets/hero-groundcheck.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://enached134-ctrl.github.io/groundcheck/assets/hero-groundcheck.png">
+<style>
+  :root{
+    --ground:#0A0E17; --surface:#131A28; --raised:#1A2433; --raisedhi:#212D40;
+    --ink:#EAF0F8; --dim:#AEBACC; --muted:#7E8CA3; --faint:#5C6982;
+    --accent:#5EEAD4; --accent-deep:#2DD4BF;
+    --pass:#45D6A0; --warn:#F6B255; --crit:#FB7185; --info:#7DB4FF;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.055);
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto};*{animation:none!important;transition:none!important}}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(1100px 620px at 80% -10%,rgba(94,234,212,.08),transparent 60%),radial-gradient(720px 480px at 2% 4%,rgba(125,180,255,.045),transparent 55%);}
+  .wrap{max-width:940px;margin:0 auto;padding:0 26px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;text-wrap:balance;letter-spacing:-.01em;margin:0}
+  p{color:var(--dim)}
+  strong{color:var(--ink);font-weight:600}
+  .mono{font-family:var(--mono)}
+  .tnum{font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:600}
+
+  header.hero{padding:70px 0 40px;border-bottom:1px solid var(--line)}
+  .repo{font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:24px}
+  .repo b{color:var(--ink)}
+  h1.title{font-size:clamp(32px,5vw,52px);line-height:1.06;margin:10px 0 20px;letter-spacing:-.02em}
+  h1.title .hl{color:var(--accent)}
+  .lede{font-size:clamp(16px,2vw,19px);color:var(--dim);max-width:62ch;line-height:1.55}
+  .lede b{color:var(--ink)}
+  .rule-quote{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--ink);border-left:3px solid var(--accent);padding:6px 0 6px 18px;margin:26px 0 0;max-width:60ch}
+
+  .bignums{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:36px 0 0}
+  @media(max-width:680px){.bignums{grid-template-columns:1fr}}
+  .bn{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+  .bn .big{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1;color:var(--accent)}
+  .bn .big .arrow{color:var(--muted);font-size:22px;margin:0 4px}
+  .bn .big .from{color:var(--crit);font-size:22px}
+  .bn .cap{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:11px}
+  .bn .sub{font-size:13px;color:var(--dim);margin-top:6px}
+  .bn .stripe{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent)}
+
+  section{padding:56px 0;border-bottom:1px solid var(--line2)}
+  .eyebrow.s{display:block;margin-bottom:12px}
+  h2.sec{font-size:clamp(24px,3.4vw,34px);line-height:1.1;margin-bottom:14px}
+  .secsub{color:var(--muted);max-width:64ch;margin:0 0 26px;font-size:15.5px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+  th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line2)}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--raised)}
+  td{color:var(--dim)}
+  tr:last-child td{border-bottom:none}
+  td.tnum{font-family:var(--mono)}
+  .rowbase td{color:var(--muted)}
+  .rowtuned{background:rgba(94,234,212,.04)}
+  .rowtuned td{color:var(--ink)}
+  .rowtuned td:first-child{color:var(--accent);font-weight:600}
+  .good{color:var(--pass)!important} .bad{color:var(--crit)!important}
+
+  .bars{display:flex;flex-direction:column;gap:16px;margin:26px 0 0}
+  .barrow{display:grid;grid-template-columns:130px 1fr;gap:14px;align-items:center}
+  @media(max-width:600px){.barrow{grid-template-columns:96px 1fr}}
+  .barrow .bl{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+  .bartrack{position:relative;height:34px}
+  .barseg{position:absolute;top:0;height:34px;border-radius:7px;display:flex;align-items:center;padding:0 11px;font-family:var(--mono);font-size:12.5px;font-weight:600}
+  .barseg.base{background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.4);color:var(--crit);z-index:2}
+  .barseg.tuned{background:linear-gradient(90deg,rgba(45,212,191,.22),rgba(94,234,212,.28));border:1px solid rgba(94,234,212,.45);color:var(--accent);width:100%;justify-content:flex-end;z-index:1}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+  @media(max-width:760px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:20px}
+  .card h3{font-size:18px;color:var(--ink);margin-bottom:9px}
+  .card p{font-size:14px;margin:0}
+  .chip{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:6px;margin-bottom:11px}
+  .chip.g{color:var(--pass);background:rgba(69,214,160,.13)} .chip.b{color:var(--crit);background:rgba(251,113,133,.14)}
+
+  .cases{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:6px}
+  @media(max-width:680px){.cases{grid-template-columns:1fr}}
+  .casebox{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:15px 17px;border-left:3px solid}
+  .casebox.t{border-left-color:var(--pass)} .casebox.f{border-left-color:var(--crit)}
+  .casebox .ct{font-family:var(--mono);font-size:13px;color:var(--ink);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .casebox .verdict{font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:5px}
+  .casebox.t .verdict{color:var(--pass);background:rgba(69,214,160,.13)}
+  .casebox.f .verdict{color:var(--crit);background:rgba(251,113,133,.14)}
+  .casebox p{font-size:13px;margin:7px 0 0;color:var(--dim)}
+
+  .callout{background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:10px}
+  .callout .eyebrow{display:block;margin-bottom:9px}
+  .callout p{color:var(--ink);font-size:15px;margin:0}
+  .steps{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+  .step{display:grid;grid-template-columns:26px 1fr;gap:13px;align-items:baseline;font-size:14.5px;color:var(--dim)}
+  .step .k{font-family:var(--mono);color:var(--accent);font-weight:700}
+  .step b{color:var(--ink)}
+  pre{background:#0B111C;border:1px solid var(--line);border-radius:10px;padding:15px 17px;overflow-x:auto;font-family:var(--mono);font-size:13px;color:var(--dim);line-height:1.7;margin:16px 0 0}
+  pre .c{color:var(--faint)} pre .k{color:var(--accent)}
+  footer{padding:38px 0 64px;color:var(--muted);font-size:13.5px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+  footer .sig{font-family:var(--mono)}
+  footer a{color:var(--accent)}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="repo">enached134-ctrl / <b>groundcheck</b> · open source (MIT) · a benchmark, not a claim</div>
+    <span class="eyebrow">RAG groundedness judging</span>
+    <h1 class="title">A 1.5B model that judges RAG groundedness as well as a frontier model — at <span class="hl">$0 per call</span>.</h1>
+    <p class="lede">Every serious RAG system needs a <b>groundedness judge</b>: something that reads <span class="mono">(question, context, answer)</span> and decides whether the answer is actually supported — or hallucinated. Usually that's a frontier-model API call, which makes every CI eval run cost money, leak data off-box, and hit rate limits. <b>groundcheck</b> fine-tunes a small open model into that judge, so an eval gate can grade hundreds of cases per commit at zero marginal cost.</p>
+    <p class="rule-quote">The fine-tune ships only if the evals say it beats the base model. Training is cheap; judgment is the product.</p>
+
+    <div class="bignums">
+      <div class="bn">
+        <div class="big tnum"><span class="from">0.083</span><span class="arrow">→</span>1.000</div>
+        <div class="cap">Groundedness F1</div>
+        <div class="sub">base 1.5B (0-shot) → fine-tuned, on 140 held-out cases (+0.917)</div>
+        <div class="stripe"></div>
+      </div>
+      <div class="bn">
+        <div class="big tnum">100%</div>
+        <div class="cap">Agreement w/ frontier judge</div>
+        <div class="sub">matches a Gemini teacher on every one of 60 held-out cases</div>
+        <div class="stripe"></div>
+      </div>
+      <div class="bn">
+        <div class="big tnum">$0.00</div>
+        <div class="cap">Cost per 1k judgments</div>
+        <div class="sub">runs locally in CI — vs $0.026/1k for the frontier API</div>
+        <div class="stripe"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- RESULT -->
+<section>
+  <div class="wrap">
+    <span class="eyebrow s">01 · The ship / no-ship gate</span>
+    <h2 class="sec">The base model is almost useless at this job. The fine-tune isn't.</h2>
+    <p class="secsub">Fine-tuned on 1,120 constructed cases (2 epochs, QLoRA on <span class="mono">Qwen2.5-1.5B-Instruct</span>, ~4.5 min on an RTX 5070 laptop). Judged on <b>140 held-out cases the model never saw.</b> This before/after table <em>is</em> the release gate — <span class="mono">evaluate.py</span> exits non-zero if the fine-tune doesn't win.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>model</th><th>accuracy</th><th>precision</th><th>recall</th><th>F1</th><th>refusal-correct</th></tr></thead>
+        <tbody>
+          <tr class="rowbase"><td>base &nbsp;<span class="mono" style="color:var(--faint)">(0-shot)</span></td><td class="tnum">0.529</td><td class="tnum">1.000</td><td class="tnum bad">0.043</td><td class="tnum bad">0.083</td><td class="tnum bad">0.000</td></tr>
+          <tr class="rowtuned"><td>groundcheck &nbsp;<span class="mono" style="font-size:11px">fine-tuned</span></td><td class="tnum good">1.000</td><td class="tnum">1.000</td><td class="tnum good">1.000</td><td class="tnum good">1.000</td><td class="tnum good">1.000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bars">
+      <div class="barrow"><span class="bl">F1</span><div class="bartrack"><div class="barseg tuned">1.000</div><div class="barseg base" style="width:8.3%">.083</div></div></div>
+      <div class="barrow"><span class="bl">Recall</span><div class="bartrack"><div class="barseg tuned">1.000</div><div class="barseg base" style="width:4.3%"></div></div></div>
+      <div class="barrow"><span class="bl">Refusal-correct</span><div class="bartrack"><div class="barseg tuned">1.000</div><div class="barseg base" style="width:2%"></div></div></div>
+    </div>
+    <p class="secsub" style="margin-top:22px">Out of the box the base model <b>hedges</b> — recall 0.043 means it almost never confirms a genuinely-grounded answer — and it handles a refusal case correctly <b>0%</b> of the time. The fine-tune turns the same 1.5B model into a reliable judge. <strong style="color:var(--accent)">Gate: PASS → ship.</strong></p>
+  </div>
+</section>
+
+<!-- COST PARITY -->
+<section>
+  <div class="wrap">
+    <span class="eyebrow s">02 · Cost parity</span>
+    <h2 class="sec">Same judgment as a frontier model, zero marginal cost.</h2>
+    <p class="secsub">The point of distilling a judge isn't cheaper tokens — it's a judge that runs <b>locally, in CI, on every commit</b>, with no API dependency, no rate limits, and no data leaving the box. So the real question: does the small local judge actually match a frontier one?</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>judge</th><th>accuracy</th><th>cost / 1k calls</th></tr></thead>
+        <tbody>
+          <tr class="rowbase"><td>frontier teacher &nbsp;<span class="mono" style="font-size:11px;color:var(--faint)">(Gemini)</span></td><td class="tnum">1.000</td><td class="tnum">$0.026</td></tr>
+          <tr class="rowtuned"><td>groundcheck &nbsp;<span class="mono" style="font-size:11px">local, fine-tuned</span></td><td class="tnum good">1.000</td><td class="tnum good">$0.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout" style="margin-top:20px">
+      <span class="eyebrow">Why it matters</span>
+      <p><b>100% agreement</b> with the frontier judge across 60 held-out cases, at <b>$0</b>. At the scale an eval gate actually runs — thousands of judgments per CI run, across every prompt change — that's the entire API bill and the entire rate-limit problem, gone.</p>
+    </div>
+  </div>
+</section>
+
+<!-- METHOD -->
+<section>
+  <div class="wrap">
+    <span class="eyebrow s">03 · Why the labels are trustworthy</span>
+    <h2 class="sec">No human annotation. No LLM labelling. Correct by construction.</h2>
+    <p class="secsub">The dataset builder generates the context <em>first</em>, then preserves or deliberately corrupts the answer — so the ground-truth label is known by construction, not guessed. Four balanced case types cover the ways a RAG answer can be right or wrong:</p>
+    <div class="cases">
+      <div class="casebox t"><div class="ct">supported <span class="verdict">grounded ✓</span></div><p>Answer states a fact that is present in the context.</p></div>
+      <div class="casebox f"><div class="ct">contradict <span class="verdict">not grounded ✗</span></div><p>Answer swaps in a value that conflicts with the context.</p></div>
+      <div class="casebox f"><div class="ct">fabricated <span class="verdict">not grounded ✗</span></div><p>Answer adds a specific fact that is absent from the context.</p></div>
+      <div class="casebox t"><div class="ct">refusal <span class="verdict">grounded ✓</span></div><p>Asked something absent, the answer correctly declines to answer.</p></div>
+    </div>
+    <div class="cols" style="margin-top:16px">
+      <div class="card">
+        <span class="chip g">training</span>
+        <h3>QLoRA, completions-only</h3>
+        <p>4-bit NF4 on an 8 GB consumer GPU. The model learns to <b>produce</b> the verdict <span class="mono">{"grounded": bool, "feedback": "…"}</span> — completions-only loss, so it doesn't just echo the prompt.</p>
+      </div>
+      <div class="card">
+        <span class="chip g">serving</span>
+        <h3>Drop-in eval grader</h3>
+        <p>A <span class="mono">promptfoo</span> Python provider, so any eval suite — including <span class="mono">agentic-rag-mcp</span>'s CI gate — can swap the frontier-API judge for this local one with one line.</p>
+      </div>
+    </div>
+    <pre><span class="c"># reproduce the whole thing — deterministic</span>
+python src/build_dataset.py <span class="k">--n</span> 1400 <span class="k">--seed</span> 7 <span class="k">--out</span> data
+python src/train.py <span class="k">--base</span> Qwen/Qwen2.5-1.5B-Instruct <span class="k">--epochs</span> 2
+python src/evaluate.py <span class="k">--adapter</span> out/adapter   <span class="c"># base vs tuned + the gate</span></pre>
+  </div>
+</section>
+
+<!-- SCOPE -->
+<section style="border-bottom:none">
+  <div class="wrap">
+    <span class="eyebrow s">04 · Scope, stated honestly</span>
+    <h2 class="sec">What this proves — and what it doesn't yet.</h2>
+    <p class="secsub">A benchmark is only worth as much as its honesty about scope. Here's the boundary, drawn plainly:</p>
+    <div class="cols">
+      <div class="card">
+        <span class="chip g">proven</span>
+        <h3>The pipeline, end to end</h3>
+        <p>dataset → QLoRA fine-tune → eval-gate → ship decision. On this corpus, a 1.5B model becomes a groundedness judge that matches a frontier model at zero cost, and it only shipped because its own evals said so.</p>
+      </div>
+      <div class="card">
+        <span class="chip b">not yet</span>
+        <h3>Real-world traffic</h3>
+        <p>The corpus is <b>synthetic</b> (labels correct by construction), so this proves the method, not production performance. The next step is folding in <b>real RAG traces from agentic-rag-mcp</b> under the same regression-capture rule.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:18px">
+      <span class="eyebrow">The point</span>
+      <p>Most "RAG projects" stop at a demo. This one ships a <b>measurement</b> that decides whether the demo is allowed to become a product — the unglamorous layer that makes AI features survive real traffic. The measurement decides what ships.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="sig">groundcheck · <a href="https://github.com/enached134-ctrl/groundcheck">github.com/enached134-ctrl/groundcheck</a></span>
+    <span class="sig">Daniel Enache · AI Engineer — RAG · MCP · Evals</span>
+  </div>
+</footer>
