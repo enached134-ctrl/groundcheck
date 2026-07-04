@@ -1,8 +1,8 @@
 """QLoRA fine-tune of a small instruct model into a groundedness judge.
 
 Runs on an 8 GB consumer GPU (tested target: RTX 5070 laptop). 4-bit NF4 base +
-LoRA adapters, trained on completions only so the model learns to PRODUCE the verdict,
-not to echo the prompt.
+LoRA adapters. Trained on prompt/completion pairs so TRL masks the prompt and the
+model learns to PRODUCE the verdict, not echo the question.
 
     python src/train.py --base Qwen/Qwen2.5-1.5B-Instruct --epochs 2 --out out/adapter
 """
@@ -10,14 +10,13 @@ not to echo the prompt.
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 
-from prompt import messages
+from prompt import SYSTEM, target_turn, user_turn
 
 
 def load_split(path: str) -> list[dict]:
-    import json
-
     with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
@@ -31,7 +30,7 @@ def main() -> None:
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--grad-accum", type=int, default=2)
     ap.add_argument("--lr", type=float, default=2e-4)
-    ap.add_argument("--max-len", type=int, default=768)
+    ap.add_argument("--max-len", type=int, default=512)
     args = ap.parse_args()
 
     import torch
@@ -44,13 +43,21 @@ def main() -> None:
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
-    def to_text(rows: list[dict]) -> Dataset:
-        texts = [tok.apply_chat_template(messages(r, include_target=True), tokenize=False)
-                 for r in rows]
-        return Dataset.from_dict({"text": texts})
+    def to_pc(rows: list[dict]) -> Dataset:
+        # prompt = system+user rendered with the assistant generation prefix;
+        # completion = the JSON verdict. TRL masks the prompt (completion-only loss).
+        prompts, completions = [], []
+        for r in rows:
+            msgs = [
+                {"role": "system", "content": SYSTEM},
+                {"role": "user", "content": user_turn(r["question"], r["context"], r["answer"])},
+            ]
+            prompts.append(tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
+            completions.append(target_turn(r["grounded"], r["kind"]))
+        return Dataset.from_dict({"prompt": prompts, "completion": completions})
 
-    train_ds = to_text(load_split(f"{args.data}/train.jsonl"))
-    val_ds = to_text(load_split(f"{args.data}/val.jsonl"))
+    train_ds = to_pc(load_split(f"{args.data}/train.jsonl"))
+    val_ds = to_pc(load_split(f"{args.data}/val.jsonl"))
 
     bnb = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -59,7 +66,7 @@ def main() -> None:
         bnb_4bit_use_double_quant=True,
     )
     model = AutoModelForCausalLM.from_pretrained(
-        args.base, quantization_config=bnb, device_map="auto", torch_dtype=torch.bfloat16
+        args.base, quantization_config=bnb, device_map="auto", dtype=torch.bfloat16
     )
     model.config.use_cache = False
 
@@ -69,8 +76,6 @@ def main() -> None:
                         "gate_proj", "up_proj", "down_proj"],
     )
 
-    # Train on completions only: mask everything up to the assistant turn.
-    resp_template = "<|im_start|>assistant\n"
     cfg = SFTConfig(
         output_dir=args.out,
         num_train_epochs=args.epochs,
@@ -79,6 +84,8 @@ def main() -> None:
         learning_rate=args.lr,
         max_length=args.max_len,
         bf16=True,
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=10,
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -86,7 +93,6 @@ def main() -> None:
         lr_scheduler_type="cosine",
         report_to="none",
         completion_only_loss=True,
-        assistant_only_loss=False,
     )
 
     trainer = SFTTrainer(
@@ -97,13 +103,8 @@ def main() -> None:
         peft_config=peft_cfg,
         processing_class=tok,
     )
-    # Fallback for TRL versions that need an explicit collator for completion masking.
-    if not getattr(cfg, "completion_only_loss", False):
-        from trl import DataCollatorForCompletionOnlyLM
-
-        trainer.data_collator = DataCollatorForCompletionOnlyLM(resp_template, tokenizer=tok)
-
     trainer.train()
+
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     trainer.save_model(str(out))
