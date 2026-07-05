@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  @page { size: 1200px 630px; margin:0; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px;overflow:hidden}
+  body{
+    background:#0A0E17;color:#EAF0F8;
+    font-family:Georgia,'Times New Roman',serif;
+    background-image:radial-gradient(720px 420px at 82% -12%,rgba(94,234,212,.16),transparent 60%),radial-gradient(520px 360px at 2% 108%,rgba(125,180,255,.10),transparent 55%);
+    padding:64px 68px;position:relative;
+  }
+  .mono{font-family:ui-monospace,'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace}
+  .eyebrow{font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;font-size:19px;letter-spacing:.28em;text-transform:uppercase;color:#5EEAD4;font-weight:600}
+  .repo{position:absolute;top:64px;right:68px;font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;font-size:17px;color:#7E8CA3}
+  .repo b{color:#EAF0F8}
+  h1{font-size:62px;line-height:1.05;letter-spacing:-.02em;margin:26px 0 0;max-width:20ch;font-weight:600}
+  h1 .hl{color:#5EEAD4}
+  .sub{font-size:24px;color:#AEBACC;margin-top:20px;max-width:40ch;line-height:1.4}
+  .nums{position:absolute;left:68px;right:68px;bottom:60px;display:flex;gap:16px}
+  .n{flex:1;background:#131A28;border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 22px;position:relative;overflow:hidden}
+  .n .big{font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;font-size:40px;font-weight:600;letter-spacing:-.02em;color:#5EEAD4;line-height:1}
+  .n .big .from{color:#FB7185;font-size:26px}
+  .n .big .arrow{color:#7E8CA3;font-size:24px;margin:0 5px}
+  .n .cap{font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:#7E8CA3;margin-top:12px}
+  .n .stripe{position:absolute;left:0;bottom:0;height:4px;width:100%;background:#5EEAD4}
+</style></head><body>
+  <div class="repo">enached134-ctrl / <b>groundcheck</b></div>
+  <div class="eyebrow">RAG groundedness judging · open source</div>
+  <h1>A 1.5B model that judges RAG groundedness as well as a <span class="hl">frontier model</span>.</h1>
+  <div class="sub">Fine-tuned on a laptop. Shipped only because its own evals said so.</div>
+  <div class="nums">
+    <div class="n"><div class="big"><span class="from">0.083</span><span class="arrow">→</span>1.000</div><div class="cap">Groundedness F1</div><div class="stripe"></div></div>
+    <div class="n"><div class="big">100%</div><div class="cap">Frontier-judge agreement</div><div class="stripe"></div></div>
+    <div class="n"><div class="big">$0.00</div><div class="cap">Cost per 1k calls</div><div class="stripe"></div></div>
+  </div>
+</body></html>
