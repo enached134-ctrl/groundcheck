@@ -1,0 +1,8 @@
+# Reference judges for the head-to-head benchmark.
+# Each of these calls a frontier model, so they need OPENAI_API_KEY set and they
+# cost money to run. groundcheck's own judge is LOCAL and uses the repo's existing
+# deps (torch / transformers / peft) — no key, $0/call.
+ragas>=0.2,<0.3
+deepeval>=1.0
+langchain-openai>=0.2
+tiktoken>=0.7
