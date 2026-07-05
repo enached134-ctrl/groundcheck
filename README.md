@@ -5,6 +5,8 @@ because its eval suite said yes.**
 
 **[📊 Live benchmark report →](https://enached134-ctrl.github.io/groundcheck)**
 
+![groundcheck: base 1.5B F1 0.083 vs QLoRA fine-tune F1 1.000 on 140 held-out cases, 100% agreement with a frontier judge at $0/call](assets/groundcheck-proof.png)
+
 Every serious RAG system needs a groundedness judge: something that reads *(question,
 retrieved context, answer)* and decides whether every claim in the answer is actually
 supported by the context. Today that judge is usually a frontier-model API call — which makes
